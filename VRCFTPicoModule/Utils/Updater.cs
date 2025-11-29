@@ -111,17 +111,17 @@ namespace VRCFTPicoModule.Utils
             #region Eye
             SetParam(pShape, BlendShape.Index.EyeSquint_L, UnifiedExpressions.EyeSquintLeft);
             SetParam(pShape, BlendShape.Index.EyeSquint_R, UnifiedExpressions.EyeSquintRight);
-            SetParam(pShape, BlendShape.Index.EyeWide_L, UnifiedExpressions.EyeWideLeft);
-            SetParam(pShape, BlendShape.Index.EyeWide_R, UnifiedExpressions.EyeWideRight);
+            SetParam(pShape[(int)BlendShape.Index.EyeWide_L] / 0.5f, UnifiedExpressions.EyeWideLeft); // 目を見開けるように補正
+            SetParam(pShape[(int)BlendShape.Index.EyeWide_R] / 0.5f, UnifiedExpressions.EyeWideRight); // 目を見開けるように補正
             #endregion
         }
 
         private void UpdateExpression(float[] pShape)
         {
             #region Jaw
-            SetParam(pShape, BlendShape.Index.JawOpen, UnifiedExpressions.JawOpen);
-            SetParam(pShape, BlendShape.Index.JawLeft, UnifiedExpressions.JawLeft);
-            SetParam(pShape, BlendShape.Index.JawRight, UnifiedExpressions.JawRight);
+            SetParam(pShape[(int)BlendShape.Index.JawOpen] / 0.8f, UnifiedExpressions.JawOpen); // 口を大きく開けるように補正
+            SetParam(pShape[(int)BlendShape.Index.JawLeft] / 0.5f, UnifiedExpressions.JawLeft); // 口を開けたまま左に大きく動かせるように補正
+            SetParam(pShape[(int)BlendShape.Index.JawRight] / 0.5f, UnifiedExpressions.JawRight); // 口を開けたまま右に大きく動かせるように補正
             SetParam(pShape, BlendShape.Index.JawForward, UnifiedExpressions.JawForward);
             SetParam(pShape, BlendShape.Index.MouthClose, UnifiedExpressions.MouthClosed);
             #endregion
@@ -162,13 +162,29 @@ namespace VRCFTPicoModule.Utils
             #endregion
 
             #region Nose
-            SetParam(pShape, BlendShape.Index.NoseSneer_L, UnifiedExpressions.NoseSneerLeft);
-            SetParam(pShape, BlendShape.Index.NoseSneer_R, UnifiedExpressions.NoseSneerRight);
+            var NoseSneerLeft = pShape[(int)BlendShape.Index.NoseSneer_L]; // 口が半開きになるのでNoseSneerを0.6まで動作しないように補正
+            SetParam(pShape[(int)BlendShape.Index.NoseSneer_L] > 0.6f
+                ? NoseSneerLeft
+                : 0f,
+                UnifiedExpressions.NoseSneerLeft);
+            var NoseSneerRight = pShape[(int)BlendShape.Index.NoseSneer_R]; // 口が半開きになるのでNoseSneerを0.6まで動作しないように補正
+            SetParam(pShape[(int)BlendShape.Index.NoseSneer_R] > 0.6f
+                ? NoseSneerRight
+                : 0f,
+                UnifiedExpressions.NoseSneerLeft);
             #endregion
 
             #region Mouth
-            SetParam(pShape, BlendShape.Index.MouthUpperUp_L, UnifiedExpressions.MouthUpperUpLeft);
-            SetParam(pShape, BlendShape.Index.MouthUpperUp_R, UnifiedExpressions.MouthUpperUpRight);
+            var MouthUpperUpLeft = pShape[(int)BlendShape.Index.MouthUpperUp_L]; // MouthUpperUpをMouthPressが0.1まで入っているうちは動作しないように補正
+            SetParam(pShape[(int)BlendShape.Index.MouthPress_L] < 0.1f
+                ? MouthUpperUpLeft / 0.8f
+                : 0f,
+                UnifiedExpressions.MouthUpperUpLeft);
+            var MouthUpperUpRight = pShape[(int)BlendShape.Index.MouthUpperUp_R]; // MouthUpperUpをMouthPressが0.1まで入っているうちは動作しないように補正
+            SetParam(pShape[(int)BlendShape.Index.MouthPress_R] < 0.1f
+                ? MouthUpperUpRight / 0.8f
+                : 0f,
+                UnifiedExpressions.MouthUpperUpRight);
             SetParam(pShape, BlendShape.Index.MouthLowerDown_L, UnifiedExpressions.MouthLowerDownLeft);
             SetParam(pShape, BlendShape.Index.MouthLowerDown_R, UnifiedExpressions.MouthLowerDownRight);
 
@@ -190,17 +206,23 @@ namespace VRCFTPicoModule.Utils
             
             SetParam(pShape, BlendShape.Index.MouthDimple_L, UnifiedExpressions.MouthDimpleLeft);
             SetParam(pShape, BlendShape.Index.MouthDimple_R, UnifiedExpressions.MouthDimpleRight);
-            SetParam(pShape, BlendShape.Index.MouthLeft, UnifiedExpressions.MouthUpperLeft);
-            SetParam(pShape, BlendShape.Index.MouthLeft, UnifiedExpressions.MouthLowerLeft);
-            SetParam(pShape, BlendShape.Index.MouthRight, UnifiedExpressions.MouthUpperRight);
-            SetParam(pShape, BlendShape.Index.MouthRight, UnifiedExpressions.MouthLowerRight);
+            SetParam(pShape[(int)BlendShape.Index.MouthLeft] / 0.5f, UnifiedExpressions.MouthUpperLeft); // 口を閉じたまま左に大きく動かせるように補正
+            SetParam(pShape[(int)BlendShape.Index.MouthLeft] / 0.5f, UnifiedExpressions.MouthLowerLeft); // 口を閉じたまま左に大きく動かせるように補正
+            SetParam(pShape[(int)BlendShape.Index.MouthRight] / 0.5f, UnifiedExpressions.MouthUpperRight); // 口を閉じたまま右に大きく動かせるように補正
+            SetParam(pShape[(int)BlendShape.Index.MouthRight] / 0.5f, UnifiedExpressions.MouthLowerRight); // 口を閉じたまま右に大きく動かせるように補正
             SetParam(pShape, BlendShape.Index.MouthPress_L, UnifiedExpressions.MouthPressLeft);
             SetParam(pShape, BlendShape.Index.MouthPress_R, UnifiedExpressions.MouthPressRight);
             SetParam(pShape, BlendShape.Index.MouthShrugLower, UnifiedExpressions.MouthRaiserLower);
             SetParam(pShape, BlendShape.Index.MouthShrugUpper, UnifiedExpressions.MouthRaiserUpper);
 
-            var mouthSmileLeft = pShape[(int)BlendShape.Index.MouthSmile_L] -
-                                 pShape[(int)BlendShape.Index.MouthRollLower];
+            // 0.5までしか来ない前提で線形補正
+            var smileLeftRaw = pShape[(int)BlendShape.Index.MouthSmile_L] / 0.5f;
+            var smileRightRaw = pShape[(int)BlendShape.Index.MouthSmile_R] / 0.5f;
+            // 妙に偏るので強い方を優先してシンメトリー化
+            var mouthSmileSym = Math.Max(smileLeftRaw, smileRightRaw);
+            // 最終的に送る値
+            var mouthSmileLeft = mouthSmileSym;
+            var mouthSmileRight = mouthSmileSym;
             SetParam(pShape[(int)BlendShape.Index.MouthRollLower] < 0.2f
                     ? mouthSmileLeft
                     : 0f,
@@ -209,18 +231,15 @@ namespace VRCFTPicoModule.Utils
                     ? mouthSmileLeft - pShape[(int)BlendShape.Index.MouthRollLower]
                     : 0f,
                 UnifiedExpressions.MouthCornerSlantLeft);
-
-            var mouthSmileRight = pShape[(int)BlendShape.Index.MouthSmile_R] -
-                                  pShape[(int)BlendShape.Index.MouthRollLower];
             SetParam(pShape[(int)BlendShape.Index.MouthRollLower] < 0.2f
                     ? mouthSmileRight
                     : 0f,
                 UnifiedExpressions.MouthCornerPullRight);
             SetParam(pShape[(int)BlendShape.Index.MouthRollLower] < 0.2f
-                    ? mouthSmileRight
+                    ? mouthSmileRight - pShape[(int)BlendShape.Index.MouthRollLower]
                     : 0f,
                 UnifiedExpressions.MouthCornerSlantRight);
-            
+
             SetParam(pShape, BlendShape.Index.MouthStretch_L, UnifiedExpressions.MouthStretchLeft);
             SetParam(pShape, BlendShape.Index.MouthStretch_R, UnifiedExpressions.MouthStretchRight);
             #endregion
@@ -259,7 +278,11 @@ namespace VRCFTPicoModule.Utils
             #endregion
 
             #region Tongue
-            SetParam(pShape, BlendShape.Index.TongueOut, UnifiedExpressions.TongueOut);
+            // 気休め程度の誤爆防止
+            SetParam(pShape[(int)BlendShape.Index.TongueOut] > 0.95f
+                ? pShape[(int)BlendShape.Index.TongueOut]
+                : 0f,
+            UnifiedExpressions.TongueOut);
             #endregion
         }
 
