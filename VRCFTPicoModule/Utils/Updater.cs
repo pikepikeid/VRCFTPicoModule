@@ -31,6 +31,9 @@ namespace VRCFTPicoModule.Utils
         private const float SmoothingFactor = 0.5f;
         private ModuleState _moduleState;
 
+        public float EyeGainX { get; internal set; } = 1.0f;
+        public float EyeGainY { get; internal set; } = 1.0f;
+
         public void Update(ModuleState state)
         {
             if (_udpClient == null)
@@ -81,20 +84,20 @@ namespace VRCFTPicoModule.Utils
             return header.trackingType == 2 ? DataPacketHelpers.ByteArrayToStructure<DataPacket.DataPackBody>(data, Marshal.SizeOf<DataPacket.DataPackHeader>()).blendShapeWeight : [];
         }
 
-        private static void UpdateEye(float[] pShape)
+        private void UpdateEye(float[] pShape)
         {
             var eye = UnifiedTracking.Data.Eye;
 
             #region LeftEye
             eye.Left.Openness = 1f - pShape[(int)BlendShape.Index.EyeBlink_L];
-            eye.Left.Gaze.x = pShape[(int)BlendShape.Index.EyeLookIn_L] - pShape[(int)BlendShape.Index.EyeLookOut_L];
-            eye.Left.Gaze.y = pShape[(int)BlendShape.Index.EyeLookUp_L] - pShape[(int)BlendShape.Index.EyeLookDown_L];
+            eye.Left.Gaze.x = (pShape[(int)BlendShape.Index.EyeLookIn_L] - pShape[(int)BlendShape.Index.EyeLookOut_L]) * EyeGainX;
+            eye.Left.Gaze.y = (pShape[(int)BlendShape.Index.EyeLookUp_L] - pShape[(int)BlendShape.Index.EyeLookDown_L]) * EyeGainY;
             #endregion
 
             #region RightEye
             eye.Right.Openness = 1f - pShape[(int)BlendShape.Index.EyeBlink_R];
-            eye.Right.Gaze.x = pShape[(int)BlendShape.Index.EyeLookOut_R] - pShape[(int)BlendShape.Index.EyeLookIn_R];
-            eye.Right.Gaze.y = pShape[(int)BlendShape.Index.EyeLookUp_R] - pShape[(int)BlendShape.Index.EyeLookDown_R];
+            eye.Right.Gaze.x = (pShape[(int)BlendShape.Index.EyeLookOut_R] - pShape[(int)BlendShape.Index.EyeLookIn_R]) * EyeGainX;
+            eye.Right.Gaze.y = (pShape[(int)BlendShape.Index.EyeLookUp_R] - pShape[(int)BlendShape.Index.EyeLookDown_R]) * EyeGainY;
             #endregion
             
             #region Brow
@@ -111,8 +114,8 @@ namespace VRCFTPicoModule.Utils
             #region Eye
             SetParam(pShape, BlendShape.Index.EyeSquint_L, UnifiedExpressions.EyeSquintLeft);
             SetParam(pShape, BlendShape.Index.EyeSquint_R, UnifiedExpressions.EyeSquintRight);
-            SetParam(pShape[(int)BlendShape.Index.EyeWide_L] / 0.5f, UnifiedExpressions.EyeWideLeft); // 目を見開けるように補正
-            SetParam(pShape[(int)BlendShape.Index.EyeWide_R] / 0.5f, UnifiedExpressions.EyeWideRight); // 目を見開けるように補正
+            SetParam(pShape, BlendShape.Index.EyeWide_L, UnifiedExpressions.EyeWideLeft);
+            SetParam(pShape, BlendShape.Index.EyeWide_R, UnifiedExpressions.EyeWideRight);
             #endregion
         }
 
