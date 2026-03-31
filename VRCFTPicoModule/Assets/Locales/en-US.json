@@ -13,5 +13,10 @@
   "expression-tracking": "Expression Tracking",
   "init-failed": "Initialization failed, exception: {0}",
   "update-timeout": "Receive data timed out",
-  "update-failed": "Update failed with exception: {0}"
+  "update-failed": "Update failed with exception: {0}",
+  "eye-gain-loaded": "Eye gain loaded: X={0}, Y={1}",
+  "eye-gain-invalid": "Invalid eye_gain.txt format: \"{0}\"",
+  "eye-gain-not-found": "eye_gain.txt not found, using default values",
+  "eye-gain-disabled": "Eye gain disabled",
+  "eye-gain-failed": "Failed to read eye_gain.txt"
 }

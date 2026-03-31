@@ -16,6 +16,13 @@ public class VRCFTPicoModule : ExtTrackingModule
     private static int _port;
     private Updater? _updater;
     private (bool, bool) _trackingAvailable;
+    private static readonly string GainFilePath =
+    Path.Combine(
+        Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!,
+        "eye_gain.txt"
+    );
+    private static float _eyeGainX = 1.0f;
+    private static float _eyeGainY = 1.0f;
 
     public override (bool SupportsEye, bool SupportsExpression) Supported => (true, true);
 
@@ -36,6 +43,7 @@ public class VRCFTPicoModule : ExtTrackingModule
         return initializationResult;
     }
 
+
     private async Task<(bool eyeSuccess, bool expressionSuccess)> InitializeAsync()
     {
         Logger.LogDebug(T("initializing-udp-clients"), string.Join(", ", Ports));
@@ -51,12 +59,15 @@ public class VRCFTPicoModule : ExtTrackingModule
             Logger.LogInformation(T("eye-tracking-disabled"));
         if (!_trackingAvailable.Item2)
             Logger.LogInformation(T("expression-tracking-disabled"));
-
+        
+        LoadEyeGain();
         _updater = new Updater(_udpClient, Logger, _port == Ports[1], _trackingAvailable);
+        _updater.EyeGainX = _eyeGainX;
+        _updater.EyeGainY = _eyeGainY;
 
         return _trackingAvailable;
     }
-
+    
     private (bool, bool) ReadConfiguration()
     {
         var currentDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
@@ -139,5 +150,37 @@ public class VRCFTPicoModule : ExtTrackingModule
         }
         _udpClient.Dispose();
         _updater = null;
+    }
+    private void LoadEyeGain()
+    {
+        try
+        {
+            if (!File.Exists(GainFilePath))
+            {
+                Logger.LogDebug("eye_gain.txt not found, using default values");
+                return;
+            }
+
+            var text = File.ReadAllText(GainFilePath).Trim();
+            var parts = text.Split(',');
+
+            if (parts.Length >= 2 &&
+                float.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var x) &&
+                float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var y))
+            {
+                _eyeGainX = x;
+                _eyeGainY = y;
+
+                Logger.LogInformation($"Eye gain loaded: X={_eyeGainX}, Y={_eyeGainY}");
+            }
+            else
+            {
+                Logger.LogWarning($"Invalid eye_gain.txt format: \"{text}\"");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to read eye_gain.txt");
+        }
     }
 }
