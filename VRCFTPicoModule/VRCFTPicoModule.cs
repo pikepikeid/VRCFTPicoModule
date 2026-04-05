@@ -23,6 +23,7 @@ public class VRCFTPicoModule : ExtTrackingModule
     );
     private static float _eyeGainX = 1.0f;
     private static float _eyeGainY = 1.0f;
+    private volatile bool _shuttingDown;
 
     public override (bool SupportsEye, bool SupportsExpression) Supported => (true, true);
 
@@ -139,17 +140,23 @@ public class VRCFTPicoModule : ExtTrackingModule
 
     public override void Update()
     {
-        _updater?.Update(Status);
+        if (_shuttingDown) return;
+
+        try
+        {
+            _updater?.Update(Status);
+        }
+        catch (AggregateException ex) when (ex.InnerException is ObjectDisposedException) { }
+        catch (ObjectDisposedException) { }
     }
 
     public override void Teardown()
     {
+        _shuttingDown = true;
+
         foreach (var client in Clients)
-        {
             client.Dispose();
-        }
         _udpClient.Dispose();
-        _updater = null;
     }
     private void LoadEyeGain()
     {
