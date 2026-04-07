@@ -1,3 +1,5 @@
+**本模块是对原仓库的修改版本，因此其功能无法保证。使用风险自负。**
+
 # VRCFTPicoModule
 
 [![GitHub Release](https://img.shields.io/github/v/release/lonelyicer/VRCFTPicoModule)](https://github.com/lonelyicer/VRCFTPicoModule/releases/)
