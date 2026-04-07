@@ -1,3 +1,6 @@
+**このモジュールは、元のリポジトリを独自に改変したものですので、動作保証はありません。自己責任でご利用ください。
+This module is an independently modified fork of the original repository. As such, operation is not guaranteed. Please use it at your own risk.**
+
 # VRCFTPicoModule
 
 [![GitHub Release](https://img.shields.io/github/v/release/lonelyicer/VRCFTPicoModule)](https://github.com/lonelyicer/VRCFTPicoModule/releases/)
