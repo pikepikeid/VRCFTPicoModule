@@ -169,7 +169,7 @@ public class VRCFTPicoModule : ExtTrackingModule
         {
             if (!File.Exists(GainFilePath))
             {
-                Logger.LogDebug("eye_gain.txt not found, using default values");
+                Logger.LogInformation(T("eye-gain-not-found"));
                 return;
             }
 
@@ -183,16 +183,16 @@ public class VRCFTPicoModule : ExtTrackingModule
                 _eyeGainX = x;
                 _eyeGainY = y;
 
-                Logger.LogInformation($"Eye gain loaded: X={_eyeGainX}, Y={_eyeGainY}");
+                Logger.LogInformation(T("eye-gain-loaded"),_eyeGainX,_eyeGainY);
             }
             else
             {
-                Logger.LogWarning($"Invalid eye_gain.txt format: \"{text}\"");
+                Logger.LogWarning(T("eye-gain-invalid"),text);
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Failed to read eye_gain.txt");
+            Logger.LogError(ex, T("eye-gain-failed"));
         }
     }
 }
