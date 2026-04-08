@@ -11,7 +11,7 @@ namespace VRCFTPicoModule;
 public class VRCFTPicoModule : ExtTrackingModule
 {
     private static readonly int[] Ports = [29765, 29763];
-    private static readonly UdpClient[] Clients = Ports.Select(port => new UdpClient(port) { Client = { ReceiveTimeout = 100 } }).ToArray();
+    private UdpClient[] _clients = [];
     private static UdpClient _udpClient = new();
     private static int _port;
     private Updater? _updater;
@@ -117,7 +117,12 @@ public class VRCFTPicoModule : ExtTrackingModule
     {
         try
         {
-            var tasks = Clients.Select(client => client.ReceiveAsync()).ToArray();
+            _clients = Ports.Select(port => new UdpClient(port)
+            {
+                Client = { ReceiveTimeout = 100 }
+            }).ToArray();
+
+            var tasks = _clients.Select(client => client.ReceiveAsync()).ToArray();
         
             if (tasks.Length == 0)
             {
@@ -126,7 +131,7 @@ public class VRCFTPicoModule : ExtTrackingModule
         
             var completedTask = await Task.WhenAny(tasks);
 
-            foreach (var client in Clients) client.Dispose();
+            foreach (var client in _clients) client.Dispose();
         
             return Array.IndexOf(tasks, completedTask);
         }
@@ -154,7 +159,7 @@ public class VRCFTPicoModule : ExtTrackingModule
     {
         _shuttingDown = true;
 
-        foreach (var client in Clients)
+        foreach (var client in _clients)
             client.Dispose();
         _udpClient.Dispose();
     }
