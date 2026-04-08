@@ -108,7 +108,7 @@ public class VRCFTPicoModule : ExtTrackingModule
             { Item1: false, Item2: true } => T("expression-tracking"),
             _ => ""
         };
-        ModuleInformation.Name = "PICO / " + moduleTrackingStatus + moduleProtocol;
+        ModuleInformation.Name = "VRCFTPicoModule (modified) / " + moduleTrackingStatus + moduleProtocol;
         var stream = GetType().Assembly.GetManifestResourceStream("VRCFTPicoModule.Assets.pico.png");
         ModuleInformation.StaticImages = stream != null ? [stream] : ModuleInformation.StaticImages;
     }
