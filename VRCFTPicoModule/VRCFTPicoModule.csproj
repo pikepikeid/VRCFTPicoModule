@@ -4,7 +4,7 @@
     <LangVersion>preview</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyVersion>0.1.11</AssemblyVersion>
+    <AssemblyVersion>0.1.10.4</AssemblyVersion>
     <FileVersion>$(AssemblyVersion)</FileVersion>
     <Version>$(AssemblyVersion)</Version>
   </PropertyGroup>
@@ -23,6 +23,12 @@
   <ItemGroup>
     <None Remove="Assets\Locales\zh-CN.json" />
     <EmbeddedResource Include="Assets\Locales\zh-CN.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="Assets\Locales\ja-JP.json" />
+    <EmbeddedResource Include="Assets\Locales\ja-JP.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
   </ItemGroup>

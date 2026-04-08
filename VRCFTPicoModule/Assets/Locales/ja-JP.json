@@ -1,0 +1,22 @@
+﻿{
+  "start-init": "初期化を開始しています...",
+  "config-path": "設定ファイルの場所: {0}",
+  "force-disable-eye": "アイトラッキングは強制的に無効化されています",
+  "force-disable-expression": "フェイストラッキングは強制的に無効化されています",
+  "initializing-udp-clients": "UDPクライアントのポートを {0} で初期化しています",
+  "using-port": "使用ポート: {0}",
+  "eye-tracking-disabled": "アイトラッキングは無効です",
+  "expression-tracking-disabled": "フェイストラッキングは無効です",
+  "legacy-protocol": "レガシープロトコル",
+  "full-face-tracking": "フルフェイストラッキング",
+  "eye-tracking": "アイトラッキング",
+  "expression-tracking": "フェイストラッキング",
+  "init-failed": "初期化に失敗しました。例外: {0}",
+  "update-timeout": "データ受信がタイムアウトしました",
+  "update-failed": "アップデートに失敗しました: {0}",
+  "eye-gain-loaded": "視線ゲインを読み込みました: X={0}, Y={1}",
+  "eye-gain-invalid": "eye_gain.txt の形式が無効です: \"{0}\"",
+  "eye-gain-not-found": "eye_gain.txt が見つからないため、デフォルト値（1.0）を使用します",
+  "eye-gain-disabled": "視線ゲインは無効です",
+  "eye-gain-failed": "eye_gain.txt の読み込みに失敗しました"
+}
