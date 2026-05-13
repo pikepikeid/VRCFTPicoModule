@@ -1,22 +1,26 @@
 ﻿{
   "start-init": "Starting Initialization...",
   "config-path": "The configuration file will be in {0}",
+  "config-not-found": "config.ini not found, using default values",
   "force-disable-eye": "Eye tracking is force disabled",
   "force-disable-expression": "Expression tracking is force disabled",
   "initializing-udp-clients": "Initializing UDP Clients on ports: {0}",
   "using-port": "Using port: {0}",
   "eye-tracking-disabled": "Eye tracking is disabled",
   "expression-tracking-disabled": "Expression tracking is disabled",
+  "tracking-disabled": "Tracking Disabled",
   "legacy-protocol": "Legacy Protocol",
   "full-face-tracking": "Full FaceTracking",
   "eye-tracking": "Eye Tracking",
   "expression-tracking": "Expression Tracking",
   "init-failed": "Initialization failed, exception: {0}",
+  "config-load-failed": "Failed to read config.ini",
   "update-timeout": "Receive data timed out",
   "update-failed": "Update failed with exception: {0}",
   "eye-gain-loaded": "Eye gain loaded: X={0}, Y={1}",
   "eye-gain-invalid": "Invalid eye_gain.txt format: \"{0}\"",
   "eye-gain-not-found": "eye_gain.txt not found, using default values",
   "eye-gain-disabled": "Eye gain disabled",
-  "eye-gain-failed": "Failed to read eye_gain.txt"
+  "eye-gain-failed": "Failed to read eye_gain.txt",
+  "test-mode": "TEST MODE"
 }

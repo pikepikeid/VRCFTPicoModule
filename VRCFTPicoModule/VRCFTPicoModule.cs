@@ -8,6 +8,16 @@ using static VRCFTPicoModule.Utils.Localization;
 
 namespace VRCFTPicoModule;
 
+public class ModuleConfig
+{
+    public bool DisableEyeTracking { get; set; }
+    public bool DisableExpressionTracking { get; set; }
+
+    public float EyeGainX { get; set; } = 1.0f;
+    public float EyeGainY { get; set; } = 1.0f;
+    public bool TestMode { get; set; }
+}
+
 public class VRCFTPicoModule : ExtTrackingModule
 {
     private static readonly int[] Ports = [29765, 29763];
@@ -16,13 +26,14 @@ public class VRCFTPicoModule : ExtTrackingModule
     private static int _port;
     private Updater? _updater;
     private (bool, bool) _trackingAvailable;
-    private static readonly string GainFilePath =
-    Path.Combine(
-        Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!,
-        "eye_gain.txt"
-    );
-    private static float _eyeGainX = 1.0f;
-    private static float _eyeGainY = 1.0f;
+    private ModuleConfig _config = new();
+
+    private static readonly string ConfigFilePath =
+        Path.Combine(
+            Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!,
+            "config.ini"
+        );
+
     private volatile bool _shuttingDown;
 
     public override (bool SupportsEye, bool SupportsExpression) Supported => (true, true);
@@ -31,13 +42,13 @@ public class VRCFTPicoModule : ExtTrackingModule
     {
         Localization.Initialize(CultureInfo.CurrentUICulture.Name);
         Logger.LogInformation(T("start-init"));
-        
-        var config = ReadConfiguration();
+
+        _config = ReadConfiguration();
         _trackingAvailable = (
-            !config.Item1 && eyeAvailable,
-            !config.Item2 && expressionAvailable
-        );
-        
+           !_config.DisableEyeTracking && eyeAvailable,
+           !_config.DisableExpressionTracking && expressionAvailable
+       );
+
         var initializationResult = InitializeAsync().GetAwaiter().GetResult();
         UpdateModuleInfo(initializationResult);
         
@@ -55,60 +66,135 @@ public class VRCFTPicoModule : ExtTrackingModule
         _port = Ports[portIndex];
         _udpClient = new UdpClient(_port);
         Logger.LogInformation(T("using-port"), _port);
-        
-        if (!_trackingAvailable.Item1)
+
+        if (_config.DisableEyeTracking)
             Logger.LogInformation(T("eye-tracking-disabled"));
-        if (!_trackingAvailable.Item2)
+
+        if (_config.DisableExpressionTracking)
             Logger.LogInformation(T("expression-tracking-disabled"));
-        
-        LoadEyeGain();
-        _updater = new Updater(_udpClient, Logger, _port == Ports[1], _trackingAvailable);
-        _updater.EyeGainX = _eyeGainX;
-        _updater.EyeGainY = _eyeGainY;
+
+        _updater = _config.TestMode
+            ? new TestModeUpdater(
+                _udpClient,
+                Logger,
+                _port == Ports[1],
+                _config)
+            : new Updater(
+                _udpClient,
+                Logger,
+                _port == Ports[1],
+                _config);
 
         return _trackingAvailable;
     }
-    
-    private (bool, bool) ReadConfiguration()
+
+    private ModuleConfig ReadConfiguration()
     {
-        var currentDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-        Logger.LogInformation(T("config-path"), currentDirectory);
-        
-        if (!Directory.Exists(currentDirectory))
-            return (false, false);
-        
-        var disableEye = false;
-        var disableExpression = false;
-        
-        var eyeFilePath = Path.Combine(currentDirectory, ".disable_eye");
-        if (File.Exists(eyeFilePath))
+        var config = new ModuleConfig();
+
+        try
         {
-            disableEye = true;
-            Logger.LogInformation(T("force-disable-eye"));
+            Logger.LogInformation(T("config-path"), ConfigFilePath);
+
+            if (!File.Exists(ConfigFilePath))
+            {
+                Logger.LogInformation(T("config-not-found"));
+                return config;
+            }
+
+            foreach (var rawLine in File.ReadAllLines(ConfigFilePath))
+            {
+                var line = rawLine.Trim();
+
+                if (string.IsNullOrWhiteSpace(line))
+                    continue;
+
+                if (line.StartsWith("#"))
+                    continue;
+
+                var split = line.Split(':', 2);
+
+                if (split.Length != 2)
+                    continue;
+
+                var key = split[0].Trim().ToLowerInvariant();
+                var value = split[1].Trim().ToLowerInvariant();
+
+                switch (key)
+                {
+                    case "eye-tracking":
+                        config.DisableEyeTracking =
+                            value == "disable";
+                        break;
+
+                    case "expression-tracking":
+                        config.DisableExpressionTracking =
+                            value == "disable";
+                        break;
+
+                    case "test-mode":
+                        config.TestMode =
+                            value == "enable";
+                        break;
+
+                    case "eye_gain":
+                        {
+                            var parts = value.Split(',');
+
+                            if (parts.Length >= 2 &&
+                                float.TryParse(
+                                    parts[0],
+                                    NumberStyles.Float,
+                                    CultureInfo.InvariantCulture,
+                                    out var x) &&
+                                float.TryParse(
+                                    parts[1],
+                                    NumberStyles.Float,
+                                    CultureInfo.InvariantCulture,
+                                    out var y))
+                            {
+                                config.EyeGainX = x;
+                                config.EyeGainY = y;
+
+                                Logger.LogInformation(
+                                    T("eye-gain-loaded"),
+                                    x,
+                                    y
+                                );
+                            }
+                            else
+                            {
+                                Logger.LogWarning(
+                                    T("eye-gain-invalid"),
+                                    value
+                                );
+                            }
+
+                            break;
+                        }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, T("config-load-failed"));
         }
 
-        var expressionFilePath = Path.Combine(currentDirectory, ".disable_expression");
-        // ReSharper disable once InvertIf
-        if (File.Exists(expressionFilePath))
-        {
-            disableExpression = true;
-            Logger.LogInformation(T("force-disable-expression"));
-        }
-        
-        return (disableEye, disableExpression);
+        return config;
     }
 
-    private void UpdateModuleInfo((bool, bool) initializationResult)
+    private void UpdateModuleInfo((bool eyeSuccess, bool expressionSuccess) initializationResult)
     {
         var moduleProtocol = _port == Ports[1] ? $" [{T("legacy-protocol")}]" : "";
         var moduleTrackingStatus = initializationResult switch
         {
-            { Item1: true, Item2: true } => T("full-face-tracking"),
-            { Item1: true, Item2: false } => T("eye-tracking"),
-            { Item1: false, Item2: true } => T("expression-tracking"),
+            { eyeSuccess: true, expressionSuccess: true } => T("full-face-tracking"),
+            { eyeSuccess: true, expressionSuccess: false } => T("eye-tracking"),
+            { eyeSuccess: false, expressionSuccess: true } => T("expression-tracking"),
             _ => ""
         };
-        ModuleInformation.Name = "VRCFTPicoModule (modified) / " + moduleTrackingStatus + moduleProtocol;
+        var testModeTag = _config.TestMode ? $" [{T("test-mode")}]" : "";
+        ModuleInformation.Name = "VRCFTPicoModule (modified) / " + moduleTrackingStatus + moduleProtocol + testModeTag;
         var stream = GetType().Assembly.GetManifestResourceStream("VRCFTPicoModule.Assets.pico.png");
         ModuleInformation.StaticImages = stream != null ? [stream] : ModuleInformation.StaticImages;
     }
@@ -162,37 +248,5 @@ public class VRCFTPicoModule : ExtTrackingModule
         foreach (var client in _clients)
             client.Dispose();
         _udpClient.Dispose();
-    }
-    private void LoadEyeGain()
-    {
-        try
-        {
-            if (!File.Exists(GainFilePath))
-            {
-                Logger.LogInformation(T("eye-gain-not-found"));
-                return;
-            }
-
-            var text = File.ReadAllText(GainFilePath).Trim();
-            var parts = text.Split(',');
-
-            if (parts.Length >= 2 &&
-                float.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var x) &&
-                float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var y))
-            {
-                _eyeGainX = x;
-                _eyeGainY = y;
-
-                Logger.LogInformation(T("eye-gain-loaded"),_eyeGainX,_eyeGainY);
-            }
-            else
-            {
-                Logger.LogWarning(T("eye-gain-invalid"),text);
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, T("eye-gain-failed"));
-        }
     }
 }

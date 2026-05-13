@@ -10,21 +10,21 @@ using static VRCFTPicoModule.Utils.Localization;
 
 namespace VRCFTPicoModule.Utils
 {
-    public class Updater()
+    public class Updater
     {
         private readonly UdpClient? _udpClient;
         private readonly ILogger? _logger;
         private readonly bool _isLegacy;
-        private readonly (bool, bool) _trackingAvailable;
+        protected readonly ModuleConfig _config;
 
-        public Updater(UdpClient udpClient, ILogger logger, bool isLegacy, (bool, bool) trackingAvailable) : this()
+        public Updater(UdpClient udpClient,ILogger logger,bool isLegacy,ModuleConfig config)
         {
             _udpClient = udpClient;
             _logger = logger;
             _isLegacy = isLegacy;
-            _trackingAvailable = trackingAvailable;
+            _config = config;
         }
-        
+
         private int _timeOut;
         private float _lastMouthLeft;
         private float _lastMouthRight;
@@ -52,11 +52,11 @@ namespace VRCFTPicoModule.Utils
                 var endPoint = new IPEndPoint(IPAddress.Any, 0);
                 var data = _udpClient.Receive(ref endPoint);
                 var pShape = ParseData(data, _isLegacy);
-                
-                if (_trackingAvailable.Item1)
+
+                if (!_config.DisableEyeTracking)
                     UpdateEye(pShape);
-                
-                if (_trackingAvailable.Item2)
+
+                if (!_config.DisableExpressionTracking)
                     UpdateExpression(pShape);
             }
             catch (SocketException ex) when (ex.SocketErrorCode == SocketError.TimedOut)
@@ -84,20 +84,20 @@ namespace VRCFTPicoModule.Utils
             return header.trackingType == 2 ? DataPacketHelpers.ByteArrayToStructure<DataPacket.DataPackBody>(data, Marshal.SizeOf<DataPacket.DataPackHeader>()).blendShapeWeight : [];
         }
 
-        private void UpdateEye(float[] pShape)
+        protected virtual void UpdateEye(float[] pShape)
         {
             var eye = UnifiedTracking.Data.Eye;
 
             #region LeftEye
             eye.Left.Openness = 1f - pShape[(int)BlendShape.Index.EyeBlink_L];
-            eye.Left.Gaze.x = (pShape[(int)BlendShape.Index.EyeLookIn_L] - pShape[(int)BlendShape.Index.EyeLookOut_L]) * EyeGainX;
-            eye.Left.Gaze.y = (pShape[(int)BlendShape.Index.EyeLookUp_L] - pShape[(int)BlendShape.Index.EyeLookDown_L]) * EyeGainY;
+            eye.Left.Gaze.x = (pShape[(int)BlendShape.Index.EyeLookIn_L] - pShape[(int)BlendShape.Index.EyeLookOut_L]) * _config.EyeGainX;
+            eye.Left.Gaze.y = (pShape[(int)BlendShape.Index.EyeLookUp_L] - pShape[(int)BlendShape.Index.EyeLookDown_L]) * _config.EyeGainY;
             #endregion
 
             #region RightEye
             eye.Right.Openness = 1f - pShape[(int)BlendShape.Index.EyeBlink_R];
-            eye.Right.Gaze.x = (pShape[(int)BlendShape.Index.EyeLookOut_R] - pShape[(int)BlendShape.Index.EyeLookIn_R]) * EyeGainX;
-            eye.Right.Gaze.y = (pShape[(int)BlendShape.Index.EyeLookUp_R] - pShape[(int)BlendShape.Index.EyeLookDown_R]) * EyeGainY;
+            eye.Right.Gaze.x = (pShape[(int)BlendShape.Index.EyeLookOut_R] - pShape[(int)BlendShape.Index.EyeLookIn_R]) * _config.EyeGainX;
+            eye.Right.Gaze.y = (pShape[(int)BlendShape.Index.EyeLookUp_R] - pShape[(int)BlendShape.Index.EyeLookDown_R]) * _config.EyeGainY;
             #endregion
             
             #region Brow
@@ -119,7 +119,7 @@ namespace VRCFTPicoModule.Utils
             #endregion
         }
 
-        private void UpdateExpression(float[] pShape)
+        protected virtual void UpdateExpression(float[] pShape)
         {
             #region Jaw
             SetParam(pShape[(int)BlendShape.Index.JawOpen] / 0.8f, UnifiedExpressions.JawOpen); // 口を大きく開けるように補正
@@ -295,12 +295,12 @@ namespace VRCFTPicoModule.Utils
             return lastValue;
         }
 
-        private static void SetParam(float[] pShape, BlendShape.Index index, UnifiedExpressions outputType)
+        protected static void SetParam(float[] pShape, BlendShape.Index index, UnifiedExpressions outputType)
         {
             UnifiedTracking.Data.Shapes[(int)outputType].Weight = pShape[(int)index];
         }
 
-        private static void SetParam(float param, UnifiedExpressions outputType)
+        protected static void SetParam(float param, UnifiedExpressions outputType)
         {
             UnifiedTracking.Data.Shapes[(int)outputType].Weight = param;
         }
