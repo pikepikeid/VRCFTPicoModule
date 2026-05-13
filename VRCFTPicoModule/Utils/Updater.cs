@@ -15,7 +15,7 @@ namespace VRCFTPicoModule.Utils
         private readonly UdpClient? _udpClient;
         private readonly ILogger? _logger;
         private readonly bool _isLegacy;
-        private readonly ModuleConfig _config;
+        protected readonly ModuleConfig _config;
 
         public Updater(UdpClient udpClient,ILogger logger,bool isLegacy,ModuleConfig config)
         {
