@@ -26,9 +26,9 @@ namespace VRCFTPicoModule.Utils
         }
 
         private int _timeOut;
-        private float _lastMouthLeft;
-        private float _lastMouthRight;
-        private const float SmoothingFactor = 0.5f;
+        protected float _lastMouthLeft;
+        protected float _lastMouthRight;
+        protected const float SmoothingFactor = 0.5f;
         private ModuleState _moduleState;
 
         public float EyeGainX { get; internal set; } = 1.0f;
@@ -174,7 +174,7 @@ namespace VRCFTPicoModule.Utils
             SetParam(pShape[(int)BlendShape.Index.NoseSneer_R] > 0.6f
                 ? NoseSneerRight
                 : 0f,
-                UnifiedExpressions.NoseSneerLeft);
+                UnifiedExpressions.NoseSneerRight);
             #endregion
 
             #region Mouth
