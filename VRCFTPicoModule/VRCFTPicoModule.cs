@@ -8,6 +8,12 @@ using static VRCFTPicoModule.Utils.Localization;
 
 namespace VRCFTPicoModule;
 
+public enum TrackingMode
+{
+    Test = 0,
+    VRCFTPicoModule = 1,
+    Extended = 2
+}
 public class ModuleConfig
 {
     public bool DisableEyeTracking { get; set; }
@@ -15,7 +21,7 @@ public class ModuleConfig
 
     public float EyeGainX { get; set; } = 1.0f;
     public float EyeGainY { get; set; } = 1.0f;
-    public bool TestMode { get; set; }
+    public TrackingMode Mode { get; set; } = TrackingMode.VRCFTPicoModule;
 }
 
 public class VRCFTPicoModule : ExtTrackingModule
@@ -73,17 +79,29 @@ public class VRCFTPicoModule : ExtTrackingModule
         if (_config.DisableExpressionTracking)
             Logger.LogInformation(T("expression-tracking-disabled"));
 
-        _updater = _config.TestMode
-            ? new TestModeUpdater(
-                _udpClient,
-                Logger,
-                _port == Ports[1],
-                _config)
-            : new Updater(
-                _udpClient,
-                Logger,
-                _port == Ports[1],
-                _config);
+        _updater = _config.Mode switch
+        {
+            TrackingMode.Test =>
+                new TestModeUpdater(
+                    _udpClient,
+                    Logger,
+                    _port == Ports[1],
+                    _config),
+
+            TrackingMode.Extended =>
+                new ExtendedUpdater(
+                    _udpClient,
+                    Logger,
+                    _port == Ports[1],
+                    _config),
+
+            _ =>
+                new Updater(
+                    _udpClient,
+                    Logger,
+                    _port == Ports[1],
+                    _config)
+        };
 
         return _trackingAvailable;
     }
@@ -132,10 +150,28 @@ public class VRCFTPicoModule : ExtTrackingModule
                             value == "disable";
                         break;
 
-                    case "test-mode":
-                        config.TestMode =
-                            value == "enable";
-                        break;
+                    case "mode":
+                        {
+                            if (int.TryParse(value, out var modeValue) &&
+                                Enum.IsDefined(typeof(TrackingMode), modeValue))
+                            {
+                                config.Mode = (TrackingMode)modeValue;
+
+                                Logger.LogInformation(
+                                    T("tracking-mode-loaded"),
+                                    modeValue
+                                );
+                            }
+                            else
+                            {
+                                Logger.LogWarning(
+                                    T("tracking-mode-invalid"),
+                                    value
+                                );
+                            }
+
+                            break;
+                        }
 
                     case "eye_gain":
                         {
@@ -193,8 +229,13 @@ public class VRCFTPicoModule : ExtTrackingModule
             { eyeSuccess: false, expressionSuccess: true } => T("expression-tracking"),
             _ => ""
         };
-        var testModeTag = _config.TestMode ? $" [{T("test-mode")}]" : "";
-        ModuleInformation.Name = "VRCFTPicoModule (modified) / " + moduleTrackingStatus + moduleProtocol + testModeTag;
+        var modeTag = _config.Mode switch
+        {
+            TrackingMode.Test => $" [{T("test-mode")}]",
+            TrackingMode.Extended => $" [{T("extended-mode")}]",
+            _ => ""
+        };
+        ModuleInformation.Name = "VRCFTPicoModule (modified) / " + moduleTrackingStatus + moduleProtocol + modeTag;
         var stream = GetType().Assembly.GetManifestResourceStream("VRCFTPicoModule.Assets.pico.png");
         ModuleInformation.StaticImages = stream != null ? [stream] : ModuleInformation.StaticImages;
     }

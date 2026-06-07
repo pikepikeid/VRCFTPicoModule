@@ -122,7 +122,7 @@ namespace VRCFTPicoModule.Utils
         protected virtual void UpdateExpression(float[] pShape)
         {
             #region Jaw
-            SetParam(pShape[(int)BlendShape.Index.JawOpen] / 0.8f, UnifiedExpressions.JawOpen); // 口を大きく開けるように補正
+            SetParam(pShape[(int)BlendShape.Index.JawOpen] / 0.75f, UnifiedExpressions.JawOpen); // 口を開きすぎないように補正
             SetParam(pShape[(int)BlendShape.Index.JawLeft] / 0.5f, UnifiedExpressions.JawLeft); // 口を開けたまま左に大きく動かせるように補正
             SetParam(pShape[(int)BlendShape.Index.JawRight] / 0.5f, UnifiedExpressions.JawRight); // 口を開けたまま右に大きく動かせるように補正
             SetParam(pShape, BlendShape.Index.JawForward, UnifiedExpressions.JawForward);
@@ -282,10 +282,15 @@ namespace VRCFTPicoModule.Utils
 
             #region Tongue
             // 気休め程度の誤爆防止
-            SetParam(pShape[(int)BlendShape.Index.TongueOut] > 0.95f
-                ? pShape[(int)BlendShape.Index.TongueOut]
-                : 0f,
-            UnifiedExpressions.TongueOut);
+            var jawOpen = pShape[(int)BlendShape.Index.JawOpen];
+            var tongueOut = pShape[(int)BlendShape.Index.TongueOut];
+
+            if (jawOpen < 0.5f)
+            {
+                tongueOut = 0f;
+            }
+
+            SetParam(tongueOut, UnifiedExpressions.TongueOut);
             #endregion
         }
 
