@@ -22,5 +22,6 @@
   "eye-gain-not-found": "eye_gain.txt が見つからないため、デフォルト値（1.0）を使用します",
   "eye-gain-disabled": "視線ゲインは無効です",
   "eye-gain-failed": "eye_gain.txt の読み込みに失敗しました",
-  "test-mode": "テストモード"
+  "test-mode": "テストモード",
+  "extended-mode": "拡張モード"
 }
