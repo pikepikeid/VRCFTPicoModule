@@ -161,13 +161,13 @@ public class ExtendedUpdater : Updater
 
         // Shrug->Frown変換
         var mouthShrugLower =
-            pShape[(int)BlendShape.Index.MouthShrugLower] > 0.2f
-                ? (pShape[(int)BlendShape.Index.MouthShrugLower] - 0.2f) / 0.3f
+            pShape[(int)BlendShape.Index.MouthShrugLower] > 0.6f
+                ? (pShape[(int)BlendShape.Index.MouthShrugLower] - 0.6f) / 0.05f
                 : 0f;
 
         var mouthShrugUpper =
-            pShape[(int)BlendShape.Index.MouthShrugUpper] > 0.2f
-                ? (pShape[(int)BlendShape.Index.MouthShrugUpper] - 0.2f) / 0.3f
+            pShape[(int)BlendShape.Index.MouthShrugUpper] > 0.6f
+                ? (pShape[(int)BlendShape.Index.MouthShrugUpper] - 0.6f) / 0.05f
                 : 0f;
 
         // LipSuckやPucker、Funnel中はShrug->Frown変換を無効化
