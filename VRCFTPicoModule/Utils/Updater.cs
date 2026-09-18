@@ -1,7 +1,8 @@
-﻿using Microsoft.Extensions.Logging;
-using System.Net;
+﻿using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using System.Text;
+using Microsoft.Extensions.Logging;
 using VRCFaceTracking;
 using VRCFaceTracking.Core.Library;
 using VRCFaceTracking.Core.Params.Expressions;
@@ -16,6 +17,8 @@ namespace VRCFTPicoModule.Utils
         private readonly ILogger? _logger;
         private readonly bool _isLegacy;
         protected readonly ModuleConfig _config;
+        private readonly string PING = "MARCO";
+        private readonly string REPLY = "POLO";
 
         public Updater(UdpClient udpClient,ILogger logger,bool isLegacy,ModuleConfig config)
         {
@@ -51,7 +54,23 @@ namespace VRCFTPicoModule.Utils
             {
                 var endPoint = new IPEndPoint(IPAddress.Any, 0);
                 var data = _udpClient.Receive(ref endPoint);
+
+                if (data.Length == PING.Length + 1)
+                {
+                    var text = Encoding.UTF8.GetString(data);
+                    if (text.StartsWith(PING))
+                    {
+                        var replyBytes = Encoding.UTF8.GetBytes(REPLY);
+                        _udpClient.Send(replyBytes, replyBytes.Length, endPoint);
+                        return; // トラッキング処理はしない
+                    }
+                }
+
                 var pShape = ParseData(data, _isLegacy);
+                if(pShape.Length == 0)
+                {
+                    return;
+                }
 
                 if (!_config.DisableEyeTracking)
                     UpdateEye(pShape);
@@ -75,6 +94,12 @@ namespace VRCFTPicoModule.Utils
 
         private static float[] ParseData(byte[] data, bool isLegacy)
         {
+            if (data.Length == 536)
+            {
+                float[] result = new float[72];
+                Buffer.BlockCopy(data, 8, result, 0, 288);
+                return result;
+            }
             if (isLegacy && data.Length >= Marshal.SizeOf<LegacyDataPacket.DataPackBody>())
                 return DataPacketHelpers.ByteArrayToStructure<LegacyDataPacket.DataPackBody>(data).blendShapeWeight;
 

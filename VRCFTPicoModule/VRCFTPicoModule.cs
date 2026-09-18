@@ -1,7 +1,9 @@
 ﻿using System.Globalization;
-using Microsoft.Extensions.Logging;
+using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
+using System.Text;
+using Microsoft.Extensions.Logging;
 using VRCFaceTracking;
 using VRCFTPicoModule.Utils;
 using static VRCFTPicoModule.Utils.Localization;
@@ -28,6 +30,11 @@ public class VRCFTPicoModule : ExtTrackingModule
 {
     private static readonly int[] Ports = [29765, 29763];
     private UdpClient[] _clients = [];
+    private UdpClient? _multicastClient;
+    private const int MulticastPort = 9030;
+    private const string MulticastAddress = "239.255.255.250";
+    private const string DISCOVER = "DISCOVER_DAEMON";
+    private IPEndPoint? _bridgeEndpoint;
     private static UdpClient _udpClient = new();
     private static int _port;
     private Updater? _updater;
@@ -64,10 +71,43 @@ public class VRCFTPicoModule : ExtTrackingModule
 
     private async Task<(bool eyeSuccess, bool expressionSuccess)> InitializeAsync()
     {
-        Logger.LogDebug(T("initializing-udp-clients"), string.Join(", ", Ports));
+        Logger.LogInformation($"[DEBUG] Starting InitializeAsync. Ports = {string.Join(", ", Ports)}");
 
         var portIndex = await ListenOnPorts();
-        if (portIndex == -1) return (false, false);
+        Logger.LogInformation($"[DEBUG] ListenOnPorts result = {portIndex}");
+
+        if (portIndex == -1)
+        {
+            Logger.LogWarning("[DEBUG] No PICO Connect ports detected. Switching to multicast 9030...");
+
+            var mc = InitializeMulticast();
+            Logger.LogInformation($"[DEBUG] InitializeMulticast() returned {mc}");
+
+            if (!mc)
+            {
+                Logger.LogError("[DEBUG] Multicast initialization failed.");
+                return (false, false);
+            }
+
+            Logger.LogInformation($"[DEBUG] Using updater type: {_config.Mode}");
+
+            _updater = _config.Mode switch
+            {
+                TrackingMode.Test =>
+                    new TestModeUpdater(_multicastClient!, Logger, false, _config),
+
+                TrackingMode.Extended =>
+                    new ExtendedUpdater(_multicastClient!, Logger, false, _config),
+
+                _ =>
+                    new Updater(_multicastClient!, Logger, false, _config)
+            };
+
+            Logger.LogInformation("[DEBUG] Multicast updater initialized successfully.");
+            return _trackingAvailable;
+        }
+
+        Logger.LogDebug(T("initializing-udp-clients"), string.Join(", ", Ports));
 
         _port = Ports[portIndex];
         _udpClient = new UdpClient(_port);
@@ -102,9 +142,78 @@ public class VRCFTPicoModule : ExtTrackingModule
                     _port == Ports[1],
                     _config)
         };
-
+        Logger.LogInformation("[DEBUG] Normal updater initialized successfully.");
         return _trackingAvailable;
     }
+    private bool InitializeMulticast()
+    {
+        try
+        {
+            _multicastClient = new UdpClient(MulticastPort)
+            {
+                EnableBroadcast = true,
+                MulticastLoopback = false
+            };
+
+            Logger.LogInformation($"[DEBUG] Listening unicast on UDP {MulticastPort}");
+
+            // 起動時にDISCOVER_DAEMONを送る
+            StartHandshake();
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "[DEBUG] Failed to initialize unicast UDP 9030.");
+            return false;
+        }
+    }
+    private void StartHandshake()
+    {
+        var endpoint = new IPEndPoint(IPAddress.Parse(MulticastAddress), MulticastPort);
+        var discoverPayload = Encoding.UTF8.GetBytes(DISCOVER);
+
+        byte[]? reply = null;
+
+        // 全 NIC に対して DISCOVER を投げる
+        var networkIPs = Dns.GetHostAddresses(Dns.GetHostName())
+            .Where(ip => ip.AddressFamily == AddressFamily.InterNetwork);
+
+        foreach (var ip in networkIPs)
+        {
+            _multicastClient!.Client.SetSocketOption(
+                SocketOptionLevel.IP,
+                SocketOptionName.MulticastInterface,
+                ip.GetAddressBytes()
+            );
+            _multicastClient.Send(discoverPayload, discoverPayload.Length, endpoint);
+        }
+
+        IPEndPoint? receiver = null;
+
+        try
+        {
+            // Bridge からの最初の応答（MARCO）が来るのを待つ
+            reply = _multicastClient!.Receive(ref receiver);
+        }
+        catch
+        {
+            Logger.LogWarning("[DEBUG] Handshake receive timed out.");
+        }
+
+        if (reply != null)
+        {
+            _bridgeEndpoint = receiver;
+            Logger.LogInformation($"[DEBUG] Handshake reply from {receiver}");
+        }
+        else
+        {
+            Logger.LogWarning("[DEBUG] No handshake reply received.");
+        }
+    }
+
+
+
 
     private ModuleConfig ReadConfiguration()
     {
@@ -256,18 +365,20 @@ public class VRCFTPicoModule : ExtTrackingModule
                 return -1;
             }
         
-            var completedTask = await Task.WhenAny(tasks);
+            var timeoutTask = Task.Delay(3000); // 3 seconds timeout
+            var completedTask = await Task.WhenAny(tasks.Concat(new[] { timeoutTask }));
 
             foreach (var client in _clients) client.Dispose();
-        
+
+            if (completedTask == timeoutTask)
+                return -1;
             return Array.IndexOf(tasks, completedTask);
         }
         catch (Exception ex)
         {
             Logger.LogError(T("init-failed"), ex);
+            return -1;
         }
-    
-        return -1;
     }
 
     public override void Update()
