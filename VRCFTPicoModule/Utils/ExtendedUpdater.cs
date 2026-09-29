@@ -61,10 +61,10 @@ public class ExtendedUpdater : Updater
         var browInner = pShape[(int)BlendShape.Index.BrowInnerUp];
         var browOuterLeft = Math.Max(0f, pShape[(int)BlendShape.Index.BrowOuterUp_L] - browInner);
         var browOuterRight = Math.Max(0f, pShape[(int)BlendShape.Index.BrowOuterUp_R] - browInner);
-        SetParam(browInner / 0.2f, UnifiedExpressions.BrowInnerUpLeft);
-        SetParam(browInner / 0.2f, UnifiedExpressions.BrowInnerUpRight);
-        SetParam(browOuterLeft / 0.2f, UnifiedExpressions.BrowOuterUpLeft);
-        SetParam(browOuterRight / 0.2f, UnifiedExpressions.BrowOuterUpRight);
+        SetParam(browInner / 0.5f, UnifiedExpressions.BrowInnerUpLeft);
+        SetParam(browInner / 0.5f, UnifiedExpressions.BrowInnerUpRight);
+        SetParam(browOuterLeft / 0.5f, UnifiedExpressions.BrowOuterUpLeft);
+        SetParam(browOuterRight / 0.5f, UnifiedExpressions.BrowOuterUpRight);
         #endregion
 
         #region Eye
