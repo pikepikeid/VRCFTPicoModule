@@ -23,7 +23,7 @@ public class ModuleConfig
 
     public float EyeGainX { get; set; } = 1.0f;
     public float EyeGainY { get; set; } = 1.0f;
-    public TrackingMode Mode { get; set; } = TrackingMode.VRCFTPicoModule;
+    public TrackingMode Mode { get; set; } = TrackingMode.Extended;
 }
 
 public class VRCFTPicoModule : ExtTrackingModule
@@ -365,7 +365,7 @@ public class VRCFTPicoModule : ExtTrackingModule
                 return -1;
             }
         
-            var timeoutTask = Task.Delay(3000); // 3 seconds timeout
+            var timeoutTask = Task.Delay(100); // 0.1 second timeout
             var completedTask = await Task.WhenAny(tasks.Concat(new[] { timeoutTask }));
 
             foreach (var client in _clients) client.Dispose();
