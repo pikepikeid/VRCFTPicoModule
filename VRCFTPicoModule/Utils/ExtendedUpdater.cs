@@ -21,6 +21,8 @@ public class ExtendedUpdater : Updater
     protected override void UpdateEye(float[] pShape)
     {
         var eye = UnifiedTracking.Data.Eye;
+        var leftBlink = pShape[(int)BlendShape.Index.EyeBlink_L];
+        var rightBlink = pShape[(int)BlendShape.Index.EyeBlink_R];
 
         #region LeftEye
         eye.Left.Openness = 1f - pShape[(int)BlendShape.Index.EyeBlink_L];
@@ -35,6 +37,27 @@ public class ExtendedUpdater : Updater
         #endregion
 
         #region Brow
+        var browL = pShape[(int)BlendShape.Index.BrowDown_L];
+        var browR = pShape[(int)BlendShape.Index.BrowDown_R];
+        var leftFactor = 1f;
+        var rightFactor = 1f;
+        if (leftBlink < rightBlink)
+        {
+            leftFactor = 1f - (rightBlink - leftBlink) * 0.5f;
+        }
+        if (rightBlink < leftBlink)
+        {
+            rightFactor = 1f - (leftBlink - rightBlink) * 0.5f;
+        }
+        var leftBase = 1f / (1f + MathF.Exp(-20f * (browL - 0.7f)));
+        var rightBase = 1f / (1f + MathF.Exp(-20f * (browR - 0.7f)));
+        leftBase *= leftFactor;
+        rightBase *= rightFactor;
+        SetParam(leftBase * 4.5f, UnifiedExpressions.BrowLowererLeft);
+        SetParam(leftBase * 4.5f, UnifiedExpressions.BrowPinchLeft);
+        SetParam(rightBase * 4.5f, UnifiedExpressions.BrowLowererRight);
+        SetParam(rightBase * 4.5f, UnifiedExpressions.BrowPinchRight);
+
         var browInner = pShape[(int)BlendShape.Index.BrowInnerUp];
         var browOuterLeft = Math.Max(0f, pShape[(int)BlendShape.Index.BrowOuterUp_L] - browInner);
         var browOuterRight = Math.Max(0f, pShape[(int)BlendShape.Index.BrowOuterUp_R] - browInner);
@@ -42,16 +65,21 @@ public class ExtendedUpdater : Updater
         SetParam(browInner / 0.5f, UnifiedExpressions.BrowInnerUpRight);
         SetParam(browOuterLeft / 0.5f, UnifiedExpressions.BrowOuterUpLeft);
         SetParam(browOuterRight / 0.5f, UnifiedExpressions.BrowOuterUpRight);
-
-        SetParam(pShape[(int)BlendShape.Index.BrowDown_L] / 0.5f, UnifiedExpressions.BrowLowererLeft);
-        SetParam(pShape[(int)BlendShape.Index.BrowDown_L] / 1.5f, UnifiedExpressions.BrowPinchLeft);
-        SetParam(pShape[(int)BlendShape.Index.BrowDown_R] / 0.5f, UnifiedExpressions.BrowLowererRight);
-        SetParam(pShape[(int)BlendShape.Index.BrowDown_R] / 1.5f, UnifiedExpressions.BrowPinchRight);
         #endregion
 
         #region Eye
-        SetParam(pShape[(int)BlendShape.Index.EyeSquint_L] / 0.1f, UnifiedExpressions.EyeSquintLeft);
-        SetParam(pShape[(int)BlendShape.Index.EyeSquint_R] / 0.1f, UnifiedExpressions.EyeSquintRight);
+        var leftSquint = pShape[(int)BlendShape.Index.EyeSquint_L];
+        var rightSquint = pShape[(int)BlendShape.Index.EyeSquint_R];
+ 
+        leftSquint *= 8.0f;
+        rightSquint *= 8.0f;
+        leftSquint *= (0.5f + 0.5f * leftBlink);
+        rightSquint *= (0.5f + 0.5f * rightBlink);
+        leftSquint = MathF.Pow(leftSquint, 1.5f);
+        rightSquint = MathF.Pow(rightSquint, 1.5f);
+
+        SetParam(leftSquint, UnifiedExpressions.EyeSquintLeft);
+        SetParam(rightSquint, UnifiedExpressions.EyeSquintRight);
         SetParam(pShape[(int)BlendShape.Index.EyeWide_L] / 1.0f, UnifiedExpressions.EyeWideLeft);
         SetParam(pShape[(int)BlendShape.Index.EyeWide_R] / 1.0f, UnifiedExpressions.EyeWideRight);
         #endregion
@@ -159,7 +187,7 @@ public class ExtendedUpdater : Updater
             rawFrown *= 0.5f;
         }
 
-        // Shrug->Frown変換
+        // Shrug->Frown変換準備 0.6以下なら0にして0.6を超える分を正規化
         var mouthShrugLower =
             pShape[(int)BlendShape.Index.MouthShrugLower] > 0.6f
                 ? (pShape[(int)BlendShape.Index.MouthShrugLower] - 0.6f) / 0.05f
@@ -170,7 +198,7 @@ public class ExtendedUpdater : Updater
                 ? (pShape[(int)BlendShape.Index.MouthShrugUpper] - 0.6f) / 0.05f
                 : 0f;
 
-        // LipSuckやPucker、Funnel中はShrug->Frown変換を無効化
+        // LipSuckやPucker、Funnel中はShrugを無効化
         var rollAmount = Math.Max(
             pShape[(int)BlendShape.Index.MouthRollUpper],
             pShape[(int)BlendShape.Index.MouthRollLower]);
@@ -189,12 +217,13 @@ public class ExtendedUpdater : Updater
             mouthShrugUpper = 0f;
         }
 
-        // 生FrownとShrug変換の強い方を採用
+        // 生FrownとShrugの強い方をFrownとして採用
         var mouthFrownOutput = Math.Max(
             rawFrown,
             Math.Max(
                 mouthShrugLower,
                 mouthShrugUpper));
+
 
         if (jawOpen < 0.1f) // JawOpenが小さいときだけFrownを減衰
         {
