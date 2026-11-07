@@ -391,6 +391,7 @@ public class VRCFTPicoModule : ExtTrackingModule
         }
         catch (AggregateException ex) when (ex.InnerException is ObjectDisposedException) { }
         catch (ObjectDisposedException) { }
+        Thread.Sleep(8);
     }
 
     public override void Teardown()
