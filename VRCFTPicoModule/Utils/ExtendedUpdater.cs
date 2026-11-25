@@ -17,6 +17,7 @@ public class ExtendedUpdater : Updater
         : base(udpClient, logger, isLegacy, config)
     {
     }
+    private bool _tongueDetected;
 
     protected override void UpdateEye(float[] pShape)
     {
@@ -49,14 +50,14 @@ public class ExtendedUpdater : Updater
         {
             rightFactor = 1f - (leftBlink - rightBlink) * 0.5f;
         }
-        var leftBase = 1f / (1f + MathF.Exp(-20f * (browL - 0.7f)));
-        var rightBase = 1f / (1f + MathF.Exp(-20f * (browR - 0.7f)));
+        var leftBase = 1f / (1f + MathF.Exp(-12f * (browL - 0.25f)));
+        var rightBase = 1f / (1f + MathF.Exp(-12f * (browR - 0.25f)));
         leftBase *= leftFactor;
         rightBase *= rightFactor;
-        SetParam(leftBase * 4.5f, UnifiedExpressions.BrowLowererLeft);
-        SetParam(leftBase * 4.5f, UnifiedExpressions.BrowPinchLeft);
-        SetParam(rightBase * 4.5f, UnifiedExpressions.BrowLowererRight);
-        SetParam(rightBase * 4.5f, UnifiedExpressions.BrowPinchRight);
+        SetParam(leftBase / 0.8f, UnifiedExpressions.BrowLowererLeft);
+        SetParam(leftBase / 0.8f, UnifiedExpressions.BrowPinchLeft);
+        SetParam(rightBase / 0.8f, UnifiedExpressions.BrowLowererRight);
+        SetParam(rightBase / 0.8f, UnifiedExpressions.BrowPinchRight);
 
         var browInner = pShape[(int)BlendShape.Index.BrowInnerUp];
         var browOuterLeft = MathF.Max(0f, pShape[(int)BlendShape.Index.BrowOuterUp_L] - browInner);
@@ -113,11 +114,18 @@ public class ExtendedUpdater : Updater
 
         var mouthLeft = pShape[(int)BlendShape.Index.MouthLeft];
         var mouthRight = pShape[(int)BlendShape.Index.MouthRight];
+        var mouthLR = Math.Max(mouthLeft, mouthRight);
+        var mouthLeftRaw = pShape[(int)BlendShape.Index.MouthLeft];
+        var mouthRightRaw = pShape[(int)BlendShape.Index.MouthRight];
 
         var mouthFrownLeft = pShape[(int)BlendShape.Index.MouthFrown_L];
         var mouthFrownRight = pShape[(int)BlendShape.Index.MouthFrown_R];
 
         var jawOpen = pShape[(int)BlendShape.Index.JawOpen];
+        var jawLeft = pShape[(int)BlendShape.Index.JawLeft];
+        var jawRight = pShape[(int)BlendShape.Index.JawRight];
+        var jawLeftRaw = pShape[(int)BlendShape.Index.JawLeft];
+        var jawRightRaw = pShape[(int)BlendShape.Index.JawRight];
 
         var mouthShrugLower = pShape[(int)BlendShape.Index.MouthShrugLower];
         var mouthShrugUpper = pShape[(int)BlendShape.Index.MouthShrugUpper];
@@ -129,6 +137,10 @@ public class ExtendedUpdater : Updater
 
         var mouthRollLower = pShape[(int)BlendShape.Index.MouthRollLower];
         var mouthRollUpper = pShape[(int)BlendShape.Index.MouthRollUpper];
+
+        var tongueOut = pShape[(int)BlendShape.Index.TongueOut];
+        var tongueLeft = MathF.Max(mouthLeftRaw, jawLeftRaw);
+        var tongueRight = MathF.Max(mouthRightRaw, jawRightRaw);
         #endregion
         #region Fix
         // 各種補正セクション
@@ -136,14 +148,14 @@ public class ExtendedUpdater : Updater
         noseSneerLeft = MathF.Max(0f, (noseSneerLeft - 0.6f) / 0.4f);
         noseSneerRight = MathF.Max(0f, (noseSneerRight - 0.6f) / 0.4f);
         // LowerDown補正
-        mouthLowerDownLeft = MathF.Pow(Math.Clamp(mouthLowerDownLeft / 0.85f, 0f, 1f), 0.7f);
-        mouthLowerDownRight = MathF.Pow(Math.Clamp(mouthLowerDownRight / 0.85f, 0f, 1f), 0.7f);
-        // Stretchは強めの補正
-        mouthStretchLeft = MathF.Pow(Math.Clamp(mouthStretchLeft / 0.45f, 0f, 1f), 0.8f);
-        mouthStretchRight = MathF.Pow(Math.Clamp(mouthStretchRight / 0.45f, 0f, 1f), 0.8f);
+        mouthLowerDownLeft = MathF.Pow(Math.Clamp(mouthLowerDownLeft / 0.8f, 0f, 1f), 0.7f);
+        mouthLowerDownRight = MathF.Pow(Math.Clamp(mouthLowerDownRight / 0.8f, 0f, 1f), 0.7f);
+        // Stretch補正
+        mouthStretchLeft = MathF.Pow(Math.Clamp(mouthStretchLeft / 0.6f, 0f, 1f), 1.25f);
+        mouthStretchRight = MathF.Pow(Math.Clamp(mouthStretchRight / 0.6f, 0f, 1f), 1.25f);
         // Smileを補正
-        mouthSmileLeft /= 0.4f;
-        mouthSmileRight /= 0.4f;
+        mouthSmileLeft /= 0.65f;
+        mouthSmileRight /= 0.65f;
         // 妙に偏るので強い方を優先してシンメトリー化
         var mouthSmileSym = MathF.Max(mouthSmileLeft, mouthSmileRight);
         var mouthStretchSym = MathF.Max(mouthStretchLeft, mouthStretchRight);
@@ -159,13 +171,8 @@ public class ExtendedUpdater : Updater
         mouthRight = MathF.Max(0f, (mouthRight - 0.25f) / 0.75f);
         // Frownシンメトリー化
         var mouthFrownSym = MathF.Max(mouthFrownLeft, mouthFrownRight);
-        // Frownを0.1fまでは動作しないように
-        mouthFrownSym = MathF.Pow(Math.Clamp((mouthFrownSym - 0.1f) / 0.1f, 0f, 1f), 2.0f);
-        // 口を開くだけでFrownが入るため減衰
-        if (jawOpen > 0.05f)
-        {
-            mouthFrownSym *= 0.1f;
-        }
+        // Frownを0.333fまでは動作しないようにして正規化、中央辺りから動作し出すように補正
+        mouthFrownSym = MathF.Pow(Math.Clamp((Math.Clamp((mouthFrownSym - 0.12f) / 0.08f, 0f, 1f)) / 0.6f, 0f, 1f), 1.35f) / 0.65f;
         // jawOpenは0.05までは動作しないようにしつつ、補正
         jawOpen = MathF.Max(0f, (jawOpen - 0.05f) / 0.95f) / 0.75f;
         // Shrugを0.5まで無効化
@@ -181,7 +188,8 @@ public class ExtendedUpdater : Updater
             mouthShrugUpper = 0f;
             mouthSmileSym = 0f;
             mouthPressSym = 0f;
-            noseSneerLeft = 0f; noseSneerRight = 0f;
+            noseSneerLeft = 0f;
+            noseSneerRight = 0f;
         }
 
         // Smileがある程度弱くStretchが強いときはSmileとUpperUpを減衰
@@ -211,30 +219,28 @@ public class ExtendedUpdater : Updater
             mouthUpperUpSym = 0f;
         }
 
-        // Smileがほぼ最大時にFrownを減衰
-        if (mouthSmileSym > 0.9f)
+        // 口を開くだけでFrownが入るため、Stretchが入っていない場合は減衰
+        if (jawOpen > 0.05f && mouthStretchSym < 0.5f)
+        {
+            mouthFrownSym *= 0.05f;
+        }
+        // Smile時にFrownを減衰
+        if (mouthSmileSym > 0.5f)
         {
             var frownScale = MathF.Max(0.2f, 1f - mouthFrownSym);
             mouthFrownSym *= frownScale;
         }
         
         // MouthLeft/Rightが十分入るときにFrownを減衰
-        if (Math.Max(mouthLeft, mouthRight) > 0.025f)
+        if (mouthLR > 0.025f)
         {
-            mouthFrownSym = 0f;
+            mouthFrownSym *= 1f - Math.Clamp((mouthLR - 0.025f) / 0.175f, 0f, 1f);
         }
-        else
+        // Stretchが0.5fを超えたらFrownに加算してSmileを減衰
+        else if (mouthStretchSym > 0.5f)
         {
-            // Stretchが0.5fを超えたらFrownに加算
-            if (mouthStretchSym > 0.5f)
-            {
-                mouthFrownSym += mouthStretchSym;
-            }
-            // Stretchが十分入るときにSmileを減衰
-            if (mouthStretchSym > 0.5f)
-            {
-                mouthSmileSym *= 0.5f;
-            }
+            mouthSmileSym *= 0.5f;
+            mouthFrownSym += mouthStretchSym;
         }
         // Funnelが検出されにくいため、Puckerが強くPressが弱いときにFunnelへ加算
         var funnelBlend = Math.Clamp((0.09f - mouthPressSymRaw) / 0.09f, 0f, 1f);
@@ -256,12 +262,41 @@ public class ExtendedUpdater : Updater
         }
         // SmileとLipSuckでSlantを計算（なんだっけこの処理？）
         var mouthSlantOutput = MathF.Max(0f, mouthSmileSym - mouthRollLower);
+
+        // LipPuckerをMouthTightenerに変換
+        var mouthTightener = mouthPucker / 4.0f;
+
+        // TongueOut関連
+        if (tongueOut > 0.75f && mouthStretchSym < 0.25f)
+        {
+            _tongueDetected = true;
+        }
+        if (_tongueDetected)
+        {
+            tongueOut = 1.0f;
+            mouthLeft = mouthLeft / 4.0f;
+            mouthRight = mouthRight / 4.0f;
+            jawLeft = jawLeft / 4.0f;
+            jawRight = jawRight / 4.0f;
+            mouthStretchLeft = 0f;
+            mouthStretchRight = 0f;
+            if (tongueLeft < 0.05f && tongueRight < 0.05f || jawOpen < 0.2f)
+            {
+                _tongueDetected = false;
+            }
+        }
+        if (!_tongueDetected)
+        {
+            tongueOut = 0f;
+            tongueLeft = 0f;
+            tongueRight = 0f;
+        }
         #endregion
 
         #region Jaw
         SetParam(jawOpen, UnifiedExpressions.JawOpen);
-        SetParam(pShape[(int)BlendShape.Index.JawLeft] / 0.5f, UnifiedExpressions.JawLeft); // 口を開けたまま左に大きく動かせるように補正
-        SetParam(pShape[(int)BlendShape.Index.JawRight] / 0.5f, UnifiedExpressions.JawRight); // 口を開けたまま右に大きく動かせるように補正
+        SetParam(jawLeft / 0.5f, UnifiedExpressions.JawLeft); // 口を開けたまま左に大きく動かせるように補正
+        SetParam(jawRight / 0.5f, UnifiedExpressions.JawRight); // 口を開けたまま右に大きく動かせるように補正
         SetParam(pShape, BlendShape.Index.JawForward, UnifiedExpressions.JawForward);
         SetParam(pShape[(int)BlendShape.Index.MouthClose] / 0.65f, UnifiedExpressions.MouthClosed);
         #endregion
@@ -331,6 +366,8 @@ public class ExtendedUpdater : Updater
         SetParam(mouthRight, UnifiedExpressions.MouthLowerRight);
         SetParam(mouthPressSym, UnifiedExpressions.MouthPressLeft);
         SetParam(mouthPressSym, UnifiedExpressions.MouthPressRight);
+        SetParam(mouthTightener, UnifiedExpressions.MouthTightenerLeft);
+        SetParam(mouthTightener, UnifiedExpressions.MouthTightenerRight);
         #endregion
 
         #region Lip
@@ -349,15 +386,9 @@ public class ExtendedUpdater : Updater
         #endregion
 
         #region Tongue
-        // 気休め程度の誤爆防止
-        var tongueOut = pShape[(int)BlendShape.Index.TongueOut];
-
-        if (jawOpen < 0.5f)
-        {
-            tongueOut = 0f;
-        }
-
         SetParam(tongueOut, UnifiedExpressions.TongueOut);
+        SetParam(tongueLeft / 0.5f, UnifiedExpressions.TongueLeft);
+        SetParam(tongueRight / 0.5f, UnifiedExpressions.TongueRight);
         #endregion
     }
 
